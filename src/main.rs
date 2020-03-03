@@ -1,11 +1,11 @@
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 
 mod radio;
 
 use vgtk::ext::*;
 use vgtk::lib::gio::ApplicationFlags;
 use vgtk::lib::gtk::*;
-use vgtk::{gtk, run, Component, UpdateAction, VNode};
+use vgtk::{gtk, gtk_if, run, Component, UpdateAction, VNode};
 
 use crate::radio::Radio;
 
@@ -75,6 +75,11 @@ impl Default for Model {
 }
 
 impl Model {
+    fn items_left(&self) -> String {
+        let tasks_left_count = self.tasks.iter().filter(|task| !task.done).count();
+        let plural = if tasks_left_count == 1 { "item "} else { "items" };
+        format!("{} {} tasks left", tasks_left_count, plural)
+    }
     fn filter_task(&self, task: &Task) -> bool {
         match self.filter {
             0 => true,
@@ -82,6 +87,9 @@ impl Model {
             2 => task.done,
             _ => unreachable!(),
         }
+    }
+    fn count_completed(&self) -> usize {
+        self.tasks.iter().filter(|task| task.done).count()
     }
 }
 
@@ -92,9 +100,8 @@ enum Message {
     Add { task: String },
     Delete { index: usize },
     Filter { filter: usize },
+    Cleanup
 }
-
-
 
 impl Component for Model {
     type Message = Message;
@@ -120,6 +127,10 @@ impl Component for Model {
             }
             Message::Filter { filter } => {
                 self.filter = filter;
+                UpdateAction::Render
+            }
+            Message::Cleanup => {
+                self.tasks.retain(|task| !task.done);
                 UpdateAction::Render
             }
         }
@@ -152,9 +163,20 @@ impl Component for Model {
                         </ListBox>
                     </ScrolledWindow>
                     <Box>
-                        <@Radio Box::center_widget=true active=self.filter
-                        labels=["All", "Active", "Completed"].as_ref()
-                         on changed=|filter| Message::Filter { filter } />
+                        <Label label=self.items_left() />
+                        <@Radio
+                            Box::center_widget=true
+                            active=self.filter
+                            labels=["All", "Active", "Completed"].as_ref()
+                            on changed=|filter| Message::Filter { filter } />
+                        {
+                            gtk_if!(self.count_completed() > 0 => {
+                                <Button
+                                    label="Clear completed"
+                                    Box::pack_type=PackType::End
+                                    on clicked=|_| Message::Cleanup />
+                            })
+                        }
                     </Box>
                 </Box>
                 </Window>
