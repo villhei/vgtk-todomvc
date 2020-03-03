@@ -1,10 +1,14 @@
 #![recursion_limit = "256"]
 
+mod radio;
+
 use vgtk::ext::*;
 use vgtk::lib::gio::ApplicationFlags;
 use vgtk::lib::gtk::*;
 use vgtk::{gtk, run, Component, UpdateAction, VNode};
-mod radio;
+
+use crate::radio::Radio;
+
 
 #[derive(Clone, Debug)]
 struct Task {
@@ -52,6 +56,7 @@ impl Task {
 #[derive(Clone, Debug)]
 struct Model {
     tasks: Vec<Task>,
+    filter: usize,
 }
 
 impl Default for Model {
@@ -64,6 +69,18 @@ impl Default for Model {
                 Task::new("HopHop", true),
                 Task::new("Kukkeliskuu", false),
             ],
+            filter: 0,
+        }
+    }
+}
+
+impl Model {
+    fn filter_task(&self, task: &Task) -> bool {
+        match self.filter {
+            0 => true,
+            1 => !task.done,
+            2 => task.done,
+            _ => unreachable!(),
         }
     }
 }
@@ -74,6 +91,7 @@ enum Message {
     Toggle { index: usize },
     Add { task: String },
     Delete { index: usize },
+    Filter { filter: usize },
 }
 
 
@@ -100,6 +118,10 @@ impl Component for Model {
                 self.tasks.remove(index);
                 UpdateAction::Render
             }
+            Message::Filter { filter } => {
+                self.filter = filter;
+                UpdateAction::Render
+            }
         }
     }
 
@@ -122,10 +144,18 @@ impl Component for Model {
                     <ScrolledWindow Box::fill=true Box::expand=true>
                         <ListBox selection_mode=SelectionMode::None>
                             {
-                                self.tasks.iter().enumerate().map(|(index, task)| task.render(index))
+                                self.tasks.iter()
+                                    .filter(|task| self.filter_task(task))
+                                    .enumerate()
+                                    .map(|(index, task)| task.render(index))
                             }
                         </ListBox>
                     </ScrolledWindow>
+                    <Box>
+                        <@Radio Box::center_widget=true active=self.filter
+                        labels=["All", "Active", "Completed"].as_ref()
+                         on changed=|filter| Message::Filter { filter } />
+                    </Box>
                 </Box>
                 </Window>
             </Application>
