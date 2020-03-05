@@ -1,83 +1,21 @@
 #![recursion_limit = "512"]
 
-mod radio;
+mod todo;
 
 use vgtk::ext::*;
-use vgtk::lib::gio::ApplicationFlags;
+use vgtk::lib::gio::{ActionExt, SimpleAction, ApplicationFlags};
 use vgtk::lib::gtk::*;
 use vgtk::{gtk, gtk_if, run, Component, UpdateAction, VNode};
 
-use crate::radio::Radio;
-
-
-#[derive(Clone, Debug)]
-struct Task {
-    text: String,
-    done: bool,
-}
-
-impl Task {
-    pub fn new<S: ToString>(text: S, done: bool) -> Self {
-        Self {
-            text: text.to_string(),
-            done,
-        }
-    }
-
-    fn label(&self) -> String {
-        if self.done {
-            format!(
-                "<span strikethrough=\"true\" alpha=\"50%\">{}</span>",
-                self.text
-            )
-        } else {
-            self.text.clone()
-        }
-    }
-
-    fn render(&self, index: usize) -> VNode<Model> {
-        gtk! {
-            <ListBoxRow>
-                <Box spacing=9>
-                    <CheckButton active=self.done on toggled=|_| Message::Toggle { index } />
-                    <Label label=self.label() use_markup=true />
-                    <Button
-                        Box::pack_type=PackType::End
-                        relief=ReliefStyle::None image="edit-delete"
-                        on clicked=|_| Message::Delete {
-                        index
-                    } />
-                </Box>
-            </ListBoxRow>
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-struct Model {
-    tasks: Vec<Task>,
-    filter: usize,
-}
-
-impl Default for Model {
-    fn default() -> Self {
-        Self {
-            tasks: vec![
-                Task::new("While my guitar", false),
-                Task::new("Lorem lipsun", false),
-                Task::new("Kukkeliskuu", false),
-                Task::new("HopHop", true),
-                Task::new("Kukkeliskuu", false),
-            ],
-            filter: 0,
-        }
-    }
-}
+use crate::todo::filter::Filter;
+use crate::todo::about::AboutDialog;
+use crate::todo::model::{Model, Task};
+use crate::todo::task_row::TaskRow;
 
 impl Model {
     fn items_left(&self) -> String {
         let tasks_left_count = self.tasks.iter().filter(|task| !task.done).count();
-        let plural = if tasks_left_count == 1 { "item "} else { "items" };
+        let plural = if tasks_left_count == 1 { "item " } else { "items" };
         format!("{} {} tasks left", tasks_left_count, plural)
     }
     fn filter_task(&self, task: &Task) -> bool {
@@ -94,8 +32,9 @@ impl Model {
 }
 
 #[derive(Clone, Debug)]
-enum Message {
+pub enum Message {
     Exit,
+    About,
     Toggle { index: usize },
     Add { task: String },
     Delete { index: usize },
@@ -133,17 +72,41 @@ impl Component for Model {
                 self.tasks.retain(|task| !task.done);
                 UpdateAction::Render
             }
+            Message::About => {
+                AboutDialog::run();
+                UpdateAction::None
+            }
         }
     }
 
     fn view(&self) -> VNode<Model> {
+        let main_menu = vgtk::menu()
+            .section(vgtk::menu().item("About", "app.about"))
+            .section(vgtk::menu().item("Quit", "app.quit"))
+            .build();
+
         gtk! {
             <Application::new_unwrap(Some("org.ville.vgtk-todomvc"), ApplicationFlags::empty())>
+                <SimpleAction::new("quit", None)
+                    Application::accels=["<Meta>q"].as_ref()
+                    enabled=true
+                    on activate=|_,_| Message::Exit />
+                <SimpleAction::new("about", None)
+                    enabled=true
+                    on activate=|_,_| Message::About />
                 <Window
                     default_width=800
                     default_height=600
                     border_width=20
                     on destroy=|_| Message::Exit title="Hello rust">
+                <HeaderBar title="The Todo List" show_close_button=true>
+                    <MenuButton HeaderBar::pack_type=PackType::Start
+                        @MenuButtonExt::direction=ArrowType::Down
+                        relief=ReliefStyle::None
+                        image="open-menu-symbolic">
+                        <Menu::new_from_model(&main_menu)/>
+                    </MenuButton>
+                </HeaderBar>
                 <Box orientation=Orientation::Vertical spacing=18>
                     <Entry placeholder_text="What needs to be done?"
                         on activate=|entry| {
@@ -158,13 +121,18 @@ impl Component for Model {
                                 self.tasks.iter()
                                     .filter(|task| self.filter_task(task))
                                     .enumerate()
-                                    .map(|(index, task)| task.render(index))
+                                    .map(|(index, task)| gtk! {
+                                        <@TaskRow task=task
+                                            on changed=|_| Message::Toggle { index }
+                                            on deleted=|_| Message::Delete { index }
+                                        />
+                                    })
                             }
                         </ListBox>
                     </ScrolledWindow>
                     <Box>
                         <Label label=self.items_left() />
-                        <@Radio
+                        <@Filter
                             Box::center_widget=true
                             active=self.filter
                             labels=["All", "Active", "Completed"].as_ref()
