@@ -35,10 +35,21 @@ impl Default for Task {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TaskFilter {
+    All,
+    Done,
+    Undone,
+}
+
+impl Default for TaskFilter {
+    fn default() -> TaskFilter { TaskFilter::All }
+}
+
 #[derive(Clone, Debug)]
-pub  struct Model {
+pub struct Model {
     pub tasks: Vec<Task>,
-    pub filter: usize,
+    pub filter: TaskFilter,
 }
 
 impl Default for Model {
@@ -51,7 +62,25 @@ impl Default for Model {
                 Task::new("HopHop", true),
                 Task::new("Kukkeliskuu", false),
             ],
-            filter: 0,
+            filter: TaskFilter::All,
         }
+    }
+}
+
+impl Model {
+    pub fn items_left(&self) -> String {
+        let tasks_left_count = self.tasks.iter().filter(|task| !task.done).count();
+        let plural = if tasks_left_count == 1 { "item " } else { "items" };
+        format!("{} {} tasks left", tasks_left_count, plural)
+    }
+    pub fn filter_task(&self, task: &Task) -> bool {
+        match self.filter {
+            TaskFilter::All => true,
+            TaskFilter::Undone => !task.done,
+            TaskFilter::Done => task.done,
+        }
+    }
+    pub fn count_completed(&self) -> usize {
+        self.tasks.iter().filter(|task| task.done).count()
     }
 }

@@ -1,23 +1,24 @@
 
 use vgtk::lib::gtk::*;
 use vgtk::{gtk, Component, Callback, UpdateAction, VNode};
+use super::model::{TaskFilter};
 
 #[derive(Clone, Debug, Default)]
 pub struct Filter {
-     pub labels: &'static [&'static str],
-     pub active: usize,
-     pub on_changed: Callback<usize>,
+     pub filters: &'static [(&'static str, TaskFilter)],
+     pub active: TaskFilter,
+     pub on_changed: Callback<TaskFilter>,
 }
 
 impl PartialEq for Filter {
     fn eq(&self, props: &Self) -> bool {
-        self.labels.eq(props.labels) && self.active == props.active
+        self.filters.eq(props.filters) && self.active == props.active
     }
 }
 
 #[derive(Clone, Debug)]
 pub enum FilterMessage {
-    Changed(usize)
+    Changed(TaskFilter)
 }
 
 impl Component for Filter {
@@ -26,8 +27,8 @@ impl Component for Filter {
 
     fn update(&mut self, msg: Self::Message) -> UpdateAction<Self> {
         match msg {
-            FilterMessage::Changed(index) => {
-                self.on_changed.send(index);
+            FilterMessage::Changed(filter) => {
+                self.on_changed.send(filter);
                 UpdateAction::Render
             }
         }
@@ -46,10 +47,10 @@ impl Component for Filter {
         gtk! {
             <Box spacing=10>
             {
-                self.labels.iter().enumerate().map(|(index, label)| gtk! {
+                self.filters.iter().map(|(label, filter)| gtk! {
                     <ToggleButton label={ * label}
-                        active={index == self.active }
-                        on toggled=|_| FilterMessage::Changed(index)/>
+                        active={filter == &self.active }
+                        on toggled=|_| FilterMessage::Changed(filter.clone())/>
                 })
             }
             </Box>
