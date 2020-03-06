@@ -8,6 +8,7 @@ use vgtk::lib::gtk::*;
 use vgtk::{gtk, gtk_if, run, Component, UpdateAction, VNode};
 
 use crate::todo::filter::Filter;
+use crate::todo::menu::AppMenu;
 use crate::todo::about::AboutDialog;
 use crate::todo::model::{Model, Task, TaskFilter};
 use crate::todo::task_row::TaskRow;
@@ -61,11 +62,6 @@ impl Component for Model {
     }
 
     fn view(&self) -> VNode<Model> {
-        let main_menu = vgtk::menu()
-            .section(vgtk::menu().item("About", "app.about"))
-            .section(vgtk::menu().item("Quit", "app.quit"))
-            .build();
-
         gtk! {
             <Application::new_unwrap(Some("org.ville.vgtk-todomvc"), ApplicationFlags::empty())>
                 <SimpleAction::new("quit", None)
@@ -80,14 +76,7 @@ impl Component for Model {
                     default_height=600
                     border_width=20
                     on destroy=|_| Message::Exit title="Hello rust">
-                <HeaderBar title="The Todo List" show_close_button=true>
-                    <MenuButton HeaderBar::pack_type=PackType::Start
-                        @MenuButtonExt::direction=ArrowType::Down
-                        relief=ReliefStyle::None
-                        image="open-menu-symbolic">
-                        <Menu::new_from_model(&main_menu)/>
-                    </MenuButton>
-                </HeaderBar>
+                <@AppMenu />
                 <Box orientation=Orientation::Vertical spacing=18>
                     <Entry placeholder_text="What needs to be done?"
                         on activate=|entry| {
