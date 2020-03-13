@@ -1,3 +1,16 @@
 # cargo-template-vgtk
 
-Cargo template for `vgtk` applications.
+`vgtk` todomvc implementation
+
+![App screenshot](doc/sreenshot.png)
+## Build
+
+```
+cargo build
+```
+
+## Run
+
+```
+cargo run
+```
