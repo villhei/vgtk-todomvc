@@ -9,9 +9,7 @@ fn build_todo_menu() -> vgtk::lib::gio::Menu {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct AppMenu {
-}
-
+pub struct AppMenu;
 
 impl Component for AppMenu {
     type Message = ();
