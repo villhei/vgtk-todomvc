@@ -1,5 +1,5 @@
 use vgtk::lib::gtk::*;
-use vgtk::{gtk, Component, VNode};
+use vgtk::{gtk, Component, UpdateAction, VNode};
 
 fn build_todo_menu() -> vgtk::lib::gio::Menu {
     vgtk::menu()
@@ -14,6 +14,11 @@ pub struct AppMenu;
 impl Component for AppMenu {
     type Message = ();
     type Properties = Self;
+
+    fn change(&mut self, props: Self) -> UpdateAction<Self> {
+        *self = props;
+        UpdateAction::Render
+    }
 
     fn view(&self) -> VNode<Self> {
         let main_menu = build_todo_menu();

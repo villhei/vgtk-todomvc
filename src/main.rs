@@ -3,13 +3,13 @@
 mod todo;
 
 use vgtk::ext::*;
-use vgtk::lib::gio::{ActionExt, SimpleAction, ApplicationFlags};
+use vgtk::lib::gio::{ActionExt, ApplicationFlags, SimpleAction};
 use vgtk::lib::gtk::*;
 use vgtk::{gtk, gtk_if, run, Component, UpdateAction, VNode};
 
+use crate::todo::about::AboutDialog;
 use crate::todo::filter::Filter;
 use crate::todo::menu::AppMenu;
-use crate::todo::about::AboutDialog;
 use crate::todo::model::{Model, Task, TaskFilter};
 use crate::todo::task_row::TaskRow;
 
@@ -21,7 +21,7 @@ pub enum Message {
     Add { task: String },
     Delete { index: usize },
     Filter { filter: TaskFilter },
-    Cleanup
+    Cleanup,
 }
 
 impl Component for Model {
